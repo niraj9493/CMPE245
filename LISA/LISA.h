@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define BUFFER_SIZE 256 	//2k bits = 256 Bytes
 #define SYNC_SIZE 32
@@ -42,7 +42,10 @@ typedef struct
 /*
 * Function Declarations
 */
+void init_global_buffer_wrap();
+void corrupt_frame_wrap();
 void init_packet(Packet* P1);
+uint8_t* detect_payload(uint8_t* buff, int size);
 void disp_packet(Packet* P);
 void fill_buffer(uint8_t* buff, int size);
 void display_buff(unsigned char* buff, int size);
@@ -60,6 +63,25 @@ int lookup_sync(uint8_t);
 * Function Definitions
 */
 
+void init_global_buffer_wrap()
+{
+	buffer = malloc(BUFFER_SIZE * sizeof(char));
+	fill_buffer((uint8_t*)buffer, BUFFER_SIZE);
+	display_buff((unsigned char*)buffer, BUFFER_SIZE);
+	buff_dump((uint8_t*)buffer, BUFFER_SIZE);
+}
+
+uint8_t* corrupt_frame_wrap(void * PacketisHere)
+{
+	buff_pick((uint8_t*)buffer, BUFFER_SIZE);
+	PacketisHere = New_Corrupt_frame(PacketisHere);
+#if DEBUG
+	display_buff((unsigned char*)buffer, BUFFER_SIZE);
+#endif
+	buff_dump((uint8_t*)buffer, BUFFER_SIZE);
+	return (uint8_t*) PacketisHere;
+}
+
 void init_packet(Packet* P1)
 {
 	//Init SYNC
@@ -75,6 +97,65 @@ void init_packet(Packet* P1)
 		P1->Payload[i] = 0x9F;
 	}
 }
+
+uint8_t* detect_payload(uint8_t* buff, int size)
+{
+	uint8_t mask[SYNC_SIZE];
+	uint8_t CL_count = 0;
+	bool found = false, firstbyte = false;
+	uint8_t FirstBytePos = 0;
+	void* at = NULL;
+
+	//MASK INit
+	for (int i = 0; i <= 0x0F; i++)
+	{
+		mask[i] = (0xA0 + i);
+		mask[i + 0X0F + 1] = (0x50 + i);
+	}
+
+	//Pattern Matching
+	uint8_t* ptr = (uint8_t*)buffer;
+	for (int i = 0; i < BUFFER_SIZE; i++)
+	{
+		for (int j = 0; j < SYNC_SIZE; j++)
+		{
+			
+#if DEBUG		
+			printf("\nBUff: %02X, [J- %02X], [I+J - %02X @ %d]\n", ptr[i], mask[j], ptr[i + j], i + j);
+#endif			
+			
+			if (mask[j] == ptr[j + i])
+			{
+				if (!firstbyte)
+				{
+					firstbyte = true;
+					FirstBytePos = i + j;
+				}
+#if DEBUG		
+				printf("\nHERE!\n M=%02X, Ptr=%02X\n", mask[j], ptr[j + i]);
+#endif          
+				CL_count++;
+				if (CL_count >= CONFIDENCELVL)
+					break;
+			}
+		}
+		if (CL_count >= CONFIDENCELVL)
+		{
+			at = ptr + FirstBytePos;
+			int some = (SYNC_SIZE - lookup_sync(*(ptr + FirstBytePos)));
+			at = (uint8_t*)at + some;
+			found = true;
+			break;
+		}
+		else
+		{
+			firstbyte = false;
+			CL_count = 0;
+		}
+	}
+	return (uint8_t*)at;
+}
+
 
 void disp_packet(Packet* P)
 {
