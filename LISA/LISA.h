@@ -43,7 +43,7 @@ typedef struct
 * Function Declarations
 */
 void init_global_buffer_wrap();
-void corrupt_frame_wrap();
+uint8_t* corrupt_frame_wrap(void * PacketisHere);
 void init_packet(Packet* P1);
 uint8_t* detect_payload(uint8_t* buff, int size);
 void disp_packet(Packet* P);
