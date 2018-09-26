@@ -21,10 +21,11 @@ using namespace std;
 
 #define BUFFER_SIZE 256 	//2k bits = 256 Bytes
 #define SYNC_SIZE 32
-#define PAYLOAD_SIZE 16
+#define MSG "SJSU_CMPE245_NIRAJ_1234"
+#define PAYLOAD_SIZE sizeof(MSG)
 #define FILENAME "mytestdata.txt"
-#define CONFIDENCELVL 5
-#define CORRUPT_PERCENT 50
+#define CONFIDENCELVL 20
+#define CORRUPT_PERCENT 1
 
 void* buffer;
 
@@ -92,10 +93,7 @@ void init_packet(Packet* P1)
 	}
 
 	//Init Payload
-	for (int i = 0; i < PAYLOAD_SIZE; i++)
-	{
-		P1->Payload[i] = 0x9F;
-	}
+	memcpy(P1->Payload, MSG, PAYLOAD_SIZE);
 }
 
 uint8_t* detect_payload(uint8_t* buff, int size)
@@ -126,7 +124,7 @@ uint8_t* detect_payload(uint8_t* buff, int size)
 			
 			if (mask[j] == ptr[j + i])
 			{
-				if (!firstbyte)
+				if (!firstbyte) 
 				{
 					firstbyte = true;
 					FirstBytePos = i + j;
@@ -192,7 +190,7 @@ void display_buff(unsigned char* buff, int size)
 		{
 			printf("\n%02d--->", i / 10);
 		}
-		printf("%02X ", buff[i]);
+		printf("%c ", buff[i]);
 	}
 	fflush(stdout);
 }
